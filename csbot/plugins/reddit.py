@@ -4,14 +4,19 @@ from csbot.plugin import Plugin
 
 
 def _pad(items, length, value=None):
+    """Pad *items* to at least *length*, filling spaces with *value*.
+    """
     return items + [value] * max(0, length - len(items))
 
 
 class Reddit(Plugin):
+    #: Prefix to use in response messages.
     REPLY_PREFIX = 'Reddit'
 
     @Plugin.integrate_with('linkinfo')
     def integrate_with_linkinfo(self, linkinfo):
+        """Register URL handler with the linkinfo plugin.
+        """
         linkinfo.register_handler(
             lambda url: url.netloc in ('reddit.com',
                                        'www.reddit.com',
