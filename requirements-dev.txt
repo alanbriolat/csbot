@@ -6,3 +6,4 @@ Sphinx
 flake8==1.6.2
 # Requirements for unit tests
 httpretty>=0.5.4
+mock>=1.0.1

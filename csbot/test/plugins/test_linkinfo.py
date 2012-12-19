@@ -4,8 +4,90 @@ from StringIO import StringIO
 from twisted.trial import unittest
 from httpretty import httprettified, HTTPretty
 from lxml.etree import LIBXML_VERSION
+from mock import Mock, patch, call
+from urlparse import urlparse
 
 from csbot.core import Bot
+
+
+class TestHandlers(unittest.TestCase):
+    bot_config = """
+    [@bot]
+    plugins = linkinfo
+    """
+
+    def setUp(self):
+        self.bot = Bot(StringIO(self.bot_config))
+        self.linkinfo = self.bot.plugins['linkinfo']
+        # Catch things which fall through to default HTML scraper, preventing
+        # external requests
+        scrape_patcher = patch.object(self.linkinfo, 'scrape_html_title', return_value=None)
+        self.scrape_mock = scrape_patcher.start()
+        self.addCleanup(scrape_patcher.stop)
+
+    def test_filters(self):
+        raw_url = 'http://example.com/foo/bar.html'
+        parsed_url = urlparse(raw_url)
+
+        # A single handler with a failing filter should fall back to the default
+        # HTML title scraper
+        f1 = Mock(return_value=False)
+        h1 = Mock()
+        self.linkinfo.register_handler(f1, h1)
+        self.assertEqual(self.linkinfo.get_link_info(raw_url),
+                         self.scrape_mock.return_value)
+        f1.assert_called_once_with(parsed_url)
+        assert not h1.called
+
+        # A later handler with a passing filter should get called, and a
+        # non-None result prevents further handlers getting called
+        f1.reset_mock()
+        f2 = Mock(return_value=True)
+        h2 = Mock()
+        f3 = Mock(return_value=True)
+        h3 = Mock()
+        self.linkinfo.register_handler(f2, h2)
+        self.linkinfo.register_handler(f3, h3)
+
+        # Result should be the return value of the handler associated with the
+        # first passing filter
+        self.assertEqual(self.linkinfo.get_link_info(raw_url), h2.return_value)
+
+        # First filter is called, but fails so first handler is not called
+        f1.assert_called_once_with(parsed_url)
+        assert not h1.called
+        # Second filter is called, passes, handler is called with URL and
+        # the filter result
+        f2.assert_called_once_with(parsed_url)
+        h2.assert_called_once_with(parsed_url, f2.return_value)
+        # Because the second filter and handler succeeded, third is not called
+        assert not f3.called
+        assert not h3.called
+
+    def test_fallthrough(self):
+        raw_url = 'http://example.com/foo/bar.html'
+        parsed_url = urlparse(raw_url)
+
+        # Returning None from a handler should continue as if the filter failed
+        f1 = Mock(return_value=True)
+        h1 = Mock(return_value=None)
+        self.linkinfo.register_handler(f1, h1)
+        # One None-returning handler, should fall back to the HTML title scraper
+        self.assertEqual(self.linkinfo.get_link_info(raw_url),
+                         self.scrape_mock.return_value)
+        f1.assert_called_once_with(parsed_url)
+        h1.assert_called_once_with(parsed_url, f1.return_value)
+
+        # If another handler exists and returns a non-None result then that
+        # should be used
+        self.scrape_mock.reset_mock()
+        f2 = Mock(return_value=True)
+        h2 = Mock()
+        self.linkinfo.register_handler(f2, h2)
+        self.assertEqual(self.linkinfo.get_link_info(raw_url), h2.return_value)
+        f2.assert_called_once_with(parsed_url)
+        h2.assert_called_once_with(parsed_url, f2.return_value)
+        assert not self.scrape_mock.called
 
 
 class TestEncoding(unittest.TestCase):
