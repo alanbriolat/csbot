@@ -78,9 +78,9 @@ class Reddit(Plugin):
             return None
 
         data = r.json['data']['children'][0]['data']
-        reply = (u'"{l[title]}" in /r/{l[subreddit]}; '
-                 u'{l[num_comments]} comments, '
-                 u'{l[score]} points (+{l[ups]}/-{l[downs]})'
+        reply = ('"{l[title]}" in /r/{l[subreddit]}; '
+                 '{l[num_comments]} comments, '
+                 '{l[score]} points (+{l[ups]}/-{l[downs]})'
                 ).format(l=data)
         return self.REPLY_PREFIX, data['over_18'], reply
 
@@ -94,8 +94,8 @@ class Reddit(Plugin):
 
         link = r.json[0]['data']['children'][0]['data']
         comment = r.json[1]['data']['children'][0]['data']
-        reply = (u"{c[author]}'s comment (+{c[ups]}/-{c[downs]}) "
-                 u'on "{l[title]}" in /r/{l[subreddit]}'
+        reply = ("{c[author]}'s comment (+{c[ups]}/-{c[downs]}) "
+                 'on "{l[title]}" in /r/{l[subreddit]}'
                 ).format(l=link, c=comment)
         return self.REPLY_PREFIX, link['over_18'], reply
 
@@ -108,8 +108,8 @@ class Reddit(Plugin):
             return None
 
         data = r.json['data']
-        reply = (u'/r/{r[display_name]}: "{r[title]}"; '
-                 u'{r[subscribers]} subscribers'
+        reply = ('/r/{r[display_name]}: "{r[title]}"; '
+                 '{r[subscribers]} subscribers'
                 ).format(r=data)
         return self.REPLY_PREFIX, data['over18'], reply
 
@@ -122,7 +122,7 @@ class Reddit(Plugin):
             return None
 
         data = r.json['data']
-        reply = (u'user "{u[name]}"; {u[link_karma]} link '
-                 u'karma, {u[comment_karma]} comment karma'
+        reply = ('user "{u[name]}"; {u[link_karma]} link '
+                 'karma, {u[comment_karma]} comment karma'
                 ).format(u=data)
         return self.REPLY_PREFIX, False, reply
