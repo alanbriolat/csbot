@@ -44,9 +44,16 @@ pip-log.txt
 .tox
 nosetests.xml
 _trial_temp/
+htmlcov
 
 #Translations
 *.mo
 
 #Mr Developer
 .mr.developer.cfg
+
+# PyCharm
+.idea/
+
+# Linters
+.ropeproject/

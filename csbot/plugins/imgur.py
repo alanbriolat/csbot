@@ -1,5 +1,6 @@
-from csbot.plugin import Plugin
-import urlparse
+import urllib.parse as urlparse
+
+from ..plugin import Plugin
 
 
 class Imgur(Plugin):
@@ -7,23 +8,29 @@ class Imgur(Plugin):
     def integrate_with_linkinfo(self, linkinfo):
         """Handle recognised imgur URLs.
 
-        Currently this just fetches titles where the image has been directly
-        linked by constructing the "image page" URL based on the image ID.
+        Direct image URLs are converted to page URLs for title scraping.  The
+        default imgur title is ignored.  If this plugin doesn't respond, the URL
+        is excluded from default :mod:`~csbot.plugins.linkinfo` behaviour.
         """
-        def handler(url, match):
+        def image_handler(url, match):
+            """Get page URL from image URL, then scrape title."""
             newurl = urlparse.ParseResult(url.scheme,
                                           'imgur.com',
                                           url.path.rsplit('.', 1)[0],
                                           url.params,
                                           url.query,
                                           url.fragment)
-            reply = linkinfo.scrape_html_title(newurl)
-            # Don't say anything if the title was never set on the image
-            if reply is not None and \
-                    reply[2] == '"imgur: the simple image sharer"':
-                return None
-            return reply
+            return page_handler(newurl, match)
 
-        linkinfo.register_handler(
-            lambda url: url.netloc == 'i.imgur.com',
-            handler)
+        def page_handler(url, match):
+            """Scrape title, but don't say anything for the default title."""
+            result = linkinfo.scrape_html_title(url)
+            result.is_redundant = 'imgur: the simple image sharer' in result.text
+            return result
+
+        # Handle direct image links
+        linkinfo.register_handler(lambda url: url.netloc == 'i.imgur.com',
+                                  image_handler, exclusive=True)
+        # Handle image page links
+        linkinfo.register_handler(lambda url: url.netloc == 'imgur.com',
+                                  page_handler, exclusive=True)
