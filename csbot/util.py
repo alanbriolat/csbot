@@ -79,15 +79,20 @@ def parse_arguments(raw):
     return list(lex)
 
 
-def simple_http_get(url):
+def simple_http_get(url, **kwargs):
     """A deliberately dumb wrapper around :func:`requests.get`.
 
     This should be used for the vast majority of HTTP GET requests.  It turns
     off SSL certificate verification and sets a non-default User-Agent, thereby
     succeeding at most "just get the content" requests.
     """
-    headers = {'User-Agent': 'csbot/0.1'}
-    return requests.get(url, verify=False, headers=headers)
+    options = {
+        'headers': {'User-Agent': 'csbot/0.1'},
+        'verify': False,
+    }
+    options['headers'].update(kwargs.pop('headers', {}))
+    options.update(kwargs)
+    return requests.get(url, **options)
 
 
 def pairwise(iterable):

@@ -1,6 +1,6 @@
-import requests
-
-from csbot.plugin import Plugin
+from ..plugin import Plugin
+from ..util import simple_http_get
+from .linkinfo import LinkInfoResult
 
 
 def _pad(items, length, value=None):
@@ -10,9 +10,6 @@ def _pad(items, length, value=None):
 
 
 class Reddit(Plugin):
-    #: Prefix to use in response messages.
-    REPLY_PREFIX = 'Reddit'
-
     @Plugin.integrate_with('linkinfo')
     def integrate_with_linkinfo(self, linkinfo):
         """Register URL handler with the linkinfo plugin.
@@ -26,7 +23,7 @@ class Reddit(Plugin):
     def linkinfo_handler(self, url, match):
         """Handle recognised reddit URLs.
         """
-                # Split up the path so we can process it chunk by chunk
+        # Split up the path so we can process it chunk by chunk
         parts = _pad(url.path.strip('/').split('/'), 6, None)
 
         # redd.it/<linkid>
@@ -72,57 +69,57 @@ class Reddit(Plugin):
     def _linkinfo_link(self, linkid):
         """Respond with information about a reddit submission.
         """
-        r = requests.get('http://www.reddit.com/by_id/t3_{}.json'
-                         .format(linkid))
-        if r.status_code != requests.codes.ok:
+        r = simple_http_get('http://www.reddit.com/by_id/t3_{}.json'
+                            .format(linkid))
+        if r.status_code != 200:
             return None
 
-        data = r.json['data']['children'][0]['data']
+        data = r.json()['data']['children'][0]['data']
         reply = ('"{l[title]}" in /r/{l[subreddit]}; '
                  '{l[num_comments]} comments, '
                  '{l[score]} points (+{l[ups]}/-{l[downs]})'
                 ).format(l=data)
-        return self.REPLY_PREFIX, data['over_18'], reply
+        return LinkInfoResult(None, reply, nsfw=data['over_18'])
 
     def _linkinfo_comment(self, linkid, commentid):
         """Respond with information about a reddit comment.
         """
-        r = requests.get('http://www.reddit.com/comments/' + linkid + '.json',
-                         params={'comment': commentid, 'limit': 1})
-        if r.status_code != requests.codes.ok:
+        r = simple_http_get('http://www.reddit.com/comments/' + linkid + '.json',
+                            params={'comment': commentid, 'limit': 1})
+        if r.status_code != 200:
             return None
 
-        link = r.json[0]['data']['children'][0]['data']
-        comment = r.json[1]['data']['children'][0]['data']
+        link = r.json()[0]['data']['children'][0]['data']
+        comment = r.json()[1]['data']['children'][0]['data']
         reply = ("{c[author]}'s comment (+{c[ups]}/-{c[downs]}) "
                  'on "{l[title]}" in /r/{l[subreddit]}'
                 ).format(l=link, c=comment)
-        return self.REPLY_PREFIX, link['over_18'], reply
+        return LinkInfoResult(None, reply, nsfw=link['over_18'])
 
     def _linkinfo_subreddit(self, subreddit):
         """Respond with information about a subreddit.
         """
-        r = requests.get('http://www.reddit.com/r/{}/about.json'
-                         .format(subreddit))
-        if r.status_code != requests.codes.ok:
+        r = simple_http_get('http://www.reddit.com/r/{}/about.json'
+                            .format(subreddit))
+        if r.status_code != 200:
             return None
 
-        data = r.json['data']
+        data = r.json()['data']
         reply = ('/r/{r[display_name]}: "{r[title]}"; '
                  '{r[subscribers]} subscribers'
                 ).format(r=data)
-        return self.REPLY_PREFIX, data['over18'], reply
+        return LinkInfoResult(None, reply, nsfw=data['over18'])
 
     def _linkinfo_user(self, username):
         """Respond with information about a reddit user.
         """
-        r = requests.get('http://www.reddit.com/user/{}/about.json'
-                         .format(username))
-        if r.status_code != requests.codes.ok:
+        r = simple_http_get('http://www.reddit.com/user/{}/about.json'
+                            .format(username))
+        if r.status_code != 200:
             return None
 
-        data = r.json['data']
+        data = r.json()['data']
         reply = ('user "{u[name]}"; {u[link_karma]} link '
                  'karma, {u[comment_karma]} comment karma'
                 ).format(u=data)
-        return self.REPLY_PREFIX, False, reply
+        return LinkInfoResult(None, reply)
