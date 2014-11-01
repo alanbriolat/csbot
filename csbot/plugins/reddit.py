@@ -10,6 +10,16 @@ def _pad(items, length, value=None):
 
 
 class Reddit(Plugin):
+    LINK_RESPONSE = ('/r/{l[subreddit]}: "{l[title]}" (by {l[author]}) '
+                     '[{l[score]} points, {l[num_comments]} comments]')
+    COMMENT_RESPONSE = ('/r/{l[subreddit]}: {c[author]}\'s comment '
+                        '[{c[score]} points] on ') + \
+                       LINK_RESPONSE.split(None, 1)[1]
+    SUBREDDIT_RESPONSE = ('/r/{r[display_name]}: "{r[title]}" '
+                          '[{r[subscribers]} subscribers]')
+    USER_RESPONSE = ('/u/{u[name]}: {u[link_karma]} link '
+                     'karma, {u[comment_karma]} comment karma')
+
     @Plugin.integrate_with('linkinfo')
     def integrate_with_linkinfo(self, linkinfo):
         """Register URL handler with the linkinfo plugin.
@@ -75,10 +85,7 @@ class Reddit(Plugin):
             return None
 
         data = r.json()['data']['children'][0]['data']
-        reply = ('"{l[title]}" in /r/{l[subreddit]}; '
-                 '{l[num_comments]} comments, '
-                 '{l[score]} points (+{l[ups]}/-{l[downs]})'
-                ).format(l=data)
+        reply = self.LINK_RESPONSE.format(l=data)
         return LinkInfoResult(None, reply, nsfw=data['over_18'])
 
     def _linkinfo_comment(self, linkid, commentid):
@@ -91,9 +98,7 @@ class Reddit(Plugin):
 
         link = r.json()[0]['data']['children'][0]['data']
         comment = r.json()[1]['data']['children'][0]['data']
-        reply = ("{c[author]}'s comment (+{c[ups]}/-{c[downs]}) "
-                 'on "{l[title]}" in /r/{l[subreddit]}'
-                ).format(l=link, c=comment)
+        reply = self.COMMENT_RESPONSE.format(l=link, c=comment)
         return LinkInfoResult(None, reply, nsfw=link['over_18'])
 
     def _linkinfo_subreddit(self, subreddit):
@@ -105,9 +110,7 @@ class Reddit(Plugin):
             return None
 
         data = r.json()['data']
-        reply = ('/r/{r[display_name]}: "{r[title]}"; '
-                 '{r[subscribers]} subscribers'
-                ).format(r=data)
+        reply = self.SUBREDDIT_RESPONSE.format(r=data)
         return LinkInfoResult(None, reply, nsfw=data['over18'])
 
     def _linkinfo_user(self, username):
@@ -119,7 +122,5 @@ class Reddit(Plugin):
             return None
 
         data = r.json()['data']
-        reply = ('user "{u[name]}"; {u[link_karma]} link '
-                 'karma, {u[comment_karma]} comment karma'
-                ).format(u=data)
+        reply = self.USER_RESPONSE.format(u=data)
         return LinkInfoResult(None, reply)
