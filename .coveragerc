@@ -1,4 +1,0 @@
-[run]
-branch = True
-source = csbot
-omit = csbot/test/*
